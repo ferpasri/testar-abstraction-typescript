@@ -1,5 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import {
     buildAbstractModel,
@@ -12,7 +11,12 @@ import {
     type AbstractModel,
 } from "../src/index.js";
 import { canonical } from "../src/common.js";
-import { conformanceSources, ordered, type ConformanceInput } from "./support/conformance.js";
+import {
+    conformanceSources,
+    ordered,
+    sharedCases,
+    type ConformanceInput,
+} from "./support/conformance.js";
 
 function reverseMap<T>(records: Map<string, T>): Map<string, T> {
     return new Map([...records].reverse());
@@ -62,8 +66,7 @@ function normalize(value: unknown): unknown {
     }
     return value;
 }
-const directory = fileURLToPath(new URL("../conformance/action-cases/", import.meta.url));
-const cases = (await readdir(directory)).sort();
+const { directory, cases } = sharedCases("actions");
 describe("shared action abstraction conformance", () => {
     for (const name of cases) {
         it(name, async () => {

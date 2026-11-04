@@ -1,7 +1,7 @@
 {
     "name": "testar-abstraction",
     "version": "0.3.1",
-    "description": "Shared abstraction rules and traceable abstract models for TESTAR evidence",
+    "description": "TypeScript implementation of the shared TESTAR abstraction language",
     "type": "module",
     "license": "BSD-3-Clause",
     "main": "./dist/index.js",
@@ -15,10 +15,10 @@
     "files": [
         "dist",
         "docs",
-        "conformance",
         "README.md",
         "LICENSE",
-        "TODO.md"
+        "TODO.md",
+        "compatibility.json"
     ],
     "scripts": {
         "build": "tsc -p tsconfig.json",
@@ -27,7 +27,8 @@
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "typecheck": "tsc -p tsconfig.test.json",
-        "check": "npm run typecheck && npm test"
+        "check": "npm run typecheck && npm test",
+        "prepare:conformance": "node tools/prepare-conformance.ts"
     },
     "dependencies": {
         "zod": "4.6.7"
@@ -36,13 +37,14 @@
         "@types/node": "26.6.5",
         "prettier": "3.9.10",
         "typescript": "7.0.2",
-        "vitest": "5.0.5"
+        "vitest": "5.0.5",
+        "fflate": "0.8.3"
     },
     "engines": {
         "node": ">=24"
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/ferpasri/testar-abstraction.git"
+        "url": "https://github.com/ferpasri/testar-abstraction-typescript.git"
     }
 }

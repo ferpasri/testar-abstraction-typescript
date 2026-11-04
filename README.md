@@ -1,26 +1,29 @@
-# TESTAR Abstraction
+# TESTAR Abstraction TypeScript
 
-Apply explicit abstraction rules to recorded testing evidence and build an abstract model whose states and transitions retain links to their supporting records.
+TypeScript implementation of the shared TESTAR abstraction language. Apply explicit rules to reconstructed evidence and build an abstract model that retains references to its supporting records.
 
-The package works in a browser, a Web Worker, or Node.js 24 and later. A dashboard can render its results; an exploration component can use them as input to an action-selection strategy.
+The package runs in a browser, a Web Worker, or Node.js. Supported build environments and the package version are recorded in [package.json](package.json). The npm package name remains `testar-abstraction`.
+
+## Install a GitHub release
+
+```sh
+npm install github:ferpasri/testar-abstraction-typescript#RELEASE_TAG
+```
+
+Choose a tag from this repository's published releases. npm builds the tagged source through `prepare`; consumers continue to import `testar-abstraction`. Commit the consumer lockfile to retain the resolved revision.
 
 ## Build and test
 
 ```sh
-npm install
+npm ci
 npm run build
-npm test
+npm run prepare:conformance
+npm run check
 ```
 
-## Install a GitHub release
+`prepare:conformance` downloads the newest published specs release, including pre-releases, into an ignored `.cache/specs` directory. It records the release, archive digest, and file digests. Tests verify the prepared files and supported compatibility identifiers. Prepare again to check a newer release; tests report unsupported identifiers rather than switching to different fixtures.
 
-The package is distributed from versioned Git tags in the public GitHub repository. Replace `RELEASE_TAG` with the tag selected from the [published releases](https://github.com/ferpasri/testar-abstraction/releases):
-
-```sh
-npm install github:ferpasri/testar-abstraction#RELEASE_TAG
-```
-
-npm downloads the tagged source, installs the build dependencies, and runs the package's `prepare` script to compile the JavaScript and TypeScript declarations. Consumers import `testar-abstraction` by name. Commit the consumer's `package-lock.json` to retain the resolved commit. Scripts must be enabled for the package build.
+The shared repository needs a published release before this download can succeed. Runtime model construction uses supplied records and does not download specifications or cases.
 
 ## Use the package
 
@@ -33,7 +36,6 @@ import {
     type AnalysisSource,
 } from "testar-abstraction";
 
-// Supply evidence already reconstructed and validated by your evidence reader.
 async function construct(sources: AnalysisSource[], rulesJson: string) {
     const selectedRuns = sources.flatMap((source) =>
         [...source.evidence.runs.keys()].map((run) => runKey(source.id, run)),
@@ -44,18 +46,11 @@ async function construct(sources: AnalysisSource[], rulesJson: string) {
 }
 ```
 
-`AnalysisSource` identifies an evidence source and supplies its fingerprint and reconstructed records. `EvidenceInput` contains maps of runs, sequences, observations, action descriptions, and action executions. Existing readers can supply a compatible object; no dashboard classes are required. Map keys are the corresponding record IDs, and execution keys are `execution.id`. Large indexes can use `bigint` in memory.
+Supply evidence already reconstructed and validated by an evidence reader. The result retains unmatched records, execution support, observation-order links, and optional action evidence. Original evidence remains unchanged.
 
-The result contains abstract states, transitions supported by recorded executions, original-record references, unmatched observations, and executions without a connected result. Observation-order links remain separately identified. Optional action rules also match available actions and executions by operation, target properties, and selected parameters. The result distinguishes recorded action links from matches inferred through those rules. See the [action rules](docs/language.md#match-actions).
-
-Original evidence is retained. Abstraction rules choose the distinctions that matter for a testing objective. An exploration strategy decides which action to execute next and belongs to its consuming application.
-
-- [Specification](docs/SPEC.md)
-- [Abstraction language](docs/language.md)
-- [Worked examples](docs/examples.md)
-- [Conformance cases](conformance/README.md)
-- [Remaining work](TODO.md)
-
-## Compatibility and releases
-
-See [compatibility and release preparation](docs/versioning.md) for the version identifiers, supported evidence schema, and release checks. The package version and build requirements are recorded in [package.json](package.json).
+- [TypeScript API and verification](docs/SPEC.md)
+- [Build and release preparation](docs/versioning.md)
+- [TODO](TODO.md)
+- [Shared specification and language](https://github.com/ferpasri/testar-abstraction-specs)
+- [Shared examples](https://github.com/ferpasri/testar-abstraction-specs/blob/main/docs/examples.md)
+- [Shared conformance cases](https://github.com/ferpasri/testar-abstraction-specs/tree/main/conformance)

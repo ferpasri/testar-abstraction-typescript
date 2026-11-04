@@ -1,5 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import {
     buildAbstractModel,
@@ -10,7 +9,12 @@ import {
     type AbstractModel,
 } from "../src/index.js";
 import { canonical } from "../src/common.js";
-import { conformanceSources, ordered, type ConformanceInput } from "./support/conformance.js";
+import {
+    conformanceSources,
+    ordered,
+    sharedCases,
+    type ConformanceInput,
+} from "./support/conformance.js";
 
 function result(preview: AbstractionPreview, model: AbstractModel) {
     const members = new Map(model.nodes.map((node) => [node.id, ordered(node.members)]));
@@ -47,8 +51,7 @@ function result(preview: AbstractionPreview, model: AbstractModel) {
     };
 }
 
-const directory = fileURLToPath(new URL("../conformance/cases/", import.meta.url));
-const cases = (await readdir(directory)).sort();
+const { directory, cases } = sharedCases("states");
 describe("shared abstraction conformance", () => {
     for (const name of cases) {
         it(name, async () => {
