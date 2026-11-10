@@ -12,3 +12,8 @@ export { observationOrderLinks, type ObservationOrderLink } from "./observation-
 export { edgeLabel, groupLabel } from "./abstractModelLabels.js";
 export { projectFields } from "./fields.js";
 export { AbstractionLimitError } from "./budget.js";
+
+export { EvidenceInputBridge, evidenceSource } from "./evidenceBridge.js";
+export type { EvidenceUpdate, EvidenceChanges } from "./evidenceBridge.js";
+export { IncrementalAbstraction, constructAbstractModel } from "./incrementalAbstraction.js";
+export type { ConstructedAbstraction } from "./incrementalAbstraction.js";

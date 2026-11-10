@@ -14,6 +14,6 @@ npm run build
 npm pack --dry-run
 ```
 
-Set the package version and matching lockfile entry when preparing a software release. Keep published tags unchanged. Consumers install a tag from `testar-abstraction-typescript`; the package name and imports remain `testar-abstraction`.
+Before publishing, verify that the package version, root lockfile version, and Git tag agree, including any pre-release suffix. Keep published tags unchanged. Consumers install a tag from `testar-abstraction-typescript`; the package name and imports remain `testar-abstraction`.
 
 The package's `prepare` script builds JavaScript and declarations. It does not download conformance data. Tests and their case preparation are development checks, separate from runtime use or installation by a dashboard.

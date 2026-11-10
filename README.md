@@ -29,22 +29,47 @@ The shared repository needs a published release before this download can succeed
 
 ```typescript
 import {
-    parseAbstractionRules,
-    previewAbstraction,
-    buildAbstractModel,
+    constructAbstractModel,
     runKey,
     type AnalysisSource,
+    type AbstractionRules,
 } from "testar-abstraction";
 
-async function construct(sources: AnalysisSource[], rulesJson: string) {
+async function construct(sources: AnalysisSource[], rules: AbstractionRules) {
     const selectedRuns = sources.flatMap((source) =>
         [...source.evidence.runs.keys()].map((run) => runKey(source.id, run)),
     );
-    const rules = parseAbstractionRules(rulesJson);
-    const preview = await previewAbstraction(sources, rules, selectedRuns);
-    return { preview, model: buildAbstractModel(preview, sources) };
+    return constructAbstractModel(sources, rules, selectedRuns);
 }
 ```
+
+### Use evidence recorded by the TypeScript library
+
+```typescript
+import { EvidenceInputBridge, IncrementalAbstraction } from "testar-abstraction";
+
+// history is the evidence writer's .evidence, or a ReconstructedEvidence instance.
+const bridge = new EvidenceInputBridge(history, { id: "trace-1", label: "My trace" });
+const abstraction = new IncrementalAbstraction(rules);
+abstraction.update(bridge.update());
+const { preview, model } = await abstraction.construct();
+
+// After more events have been accepted, repeat update and request a new snapshot.
+abstraction.update(bridge.update());
+const next = await abstraction.construct();
+```
+
+The bridge translates record names and retains the original immutable widget and property payloads. Updates process newly accepted events, including changes to existing action execution results. Treat the bridge's input views as read-only and apply its updates in order.
+
+Incremental construction reuses evidence indexes, state projections, action projections, and comparison identities. It returns an immutable preview and model snapshot when requested. Calling `construct()` without another update returns the existing snapshot. Create a new computation when changing rules or selected runs.
+
+### Compare update performance
+
+```sh
+npm run benchmark:updates -- --observations 100 --widgets 30
+```
+
+This benchmark measures conversion and model construction from identical in-memory records, comparing a full rebuild after each observation with incremental updates. It verifies that both approaches produce the same final model.
 
 Supply evidence already reconstructed and validated by an evidence reader. The result retains unmatched records, execution support, observation-order links, and optional action evidence. Original evidence remains unchanged.
 

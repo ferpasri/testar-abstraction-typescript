@@ -1,3 +1,4 @@
+import { IncrementalAbstraction } from "../src/index.js";
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import {
@@ -8,7 +9,7 @@ import {
     type AbstractionPreview,
     type AbstractModel,
 } from "../src/index.js";
-import { canonical } from "../src/common.js";
+import { canonical, parseJson } from "../src/common.js";
 import {
     conformanceSources,
     ordered,
@@ -55,7 +56,7 @@ const { directory, cases } = sharedCases("states");
 describe("shared abstraction conformance", () => {
     for (const name of cases) {
         it(name, async () => {
-            const input = JSON.parse(
+            const input = parseJson(
                 await readFile(`${directory}/${name}/input.json`, "utf8"),
             ) as ConformanceInput;
             const before = canonical(input);
@@ -85,6 +86,26 @@ describe("shared abstraction conformance", () => {
                 expected[key] = ordered(expected[key]);
             }
             expect(result(preview, model)).toEqual(expected);
+            const incremental = new IncrementalAbstraction(
+                rules,
+                input.selected_runs.map((run) => runKey(run.source, run.run)),
+            );
+            for (const source of evidence) {
+                incremental.update({
+                    source,
+                    previousFingerprint: null,
+                    changes: {
+                        runs: [...source.evidence.runs.values()],
+                        sequences: [...source.evidence.sequences.values()],
+                        observations: [...source.evidence.observations.values()],
+                        actions: [...source.evidence.actions.values()],
+                        executions: [...source.evidence.executions.values()],
+                    },
+                });
+            }
+            const updated = await incremental.construct();
+            expect(canonical(updated.preview)).toBe(canonical(preview));
+            expect(canonical(updated.model)).toBe(canonical(model));
             expect(canonical(input)).toBe(before);
             const reversed = await previewAbstraction(
                 [...evidence].reverse(),

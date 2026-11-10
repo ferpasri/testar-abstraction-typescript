@@ -1,6 +1,6 @@
 {
     "name": "testar-abstraction",
-    "version": "0.3.1",
+    "version": "0.3.3",
     "description": "TypeScript implementation of the shared TESTAR abstraction language",
     "type": "module",
     "license": "BSD-3-Clause",
@@ -28,17 +28,19 @@
         "format:check": "prettier --check .",
         "typecheck": "tsc -p tsconfig.test.json",
         "check": "npm run typecheck && npm test",
-        "prepare:conformance": "node tools/prepare-conformance.ts"
+        "prepare:conformance": "node tools/prepare-conformance.ts",
+        "benchmark:updates": "npm run build && node benchmarks/benchmark-updates.ts"
     },
     "dependencies": {
+        "testar-evidence": "github:ferpasri/testar-evidence-typescript#v0.3.0",
         "zod": "4.6.7"
     },
     "devDependencies": {
         "@types/node": "26.6.5",
+        "fflate": "0.8.3",
         "prettier": "3.9.10",
         "typescript": "7.0.2",
-        "vitest": "5.0.5",
-        "fflate": "0.8.3"
+        "vitest": "5.0.5"
     },
     "engines": {
         "node": ">=24"

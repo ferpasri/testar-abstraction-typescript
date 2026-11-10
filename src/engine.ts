@@ -1,8 +1,10 @@
-import { canonical, digest } from "./common.js";
+import { canonical } from "./common.js";
 import { ComparisonBudget, AbstractionLimitError } from "./budget.js";
 import { validateAbstractionRules } from "./abstraction-rules.js";
 import { buildEvidenceIndex, compare, referenceKey, runKey } from "./evidenceIndex.js";
-import { projectObservation } from "./projection.js";
+import { ProjectionCache } from "./projectionCache.js";
+import type { EvidenceIndex } from "./evidenceIndex.js";
+import { compareIndex } from "./evidence-input.js";
 import {
     INTERPRETER_VERSION,
     type AnalysisSource,
@@ -10,7 +12,6 @@ import {
     type ObservationGroup,
     type AbstractionPreview,
     type AbstractionProgress,
-    type ObservationProjection,
     type ProjectedWidget,
     type WidgetCorrespondence,
 } from "./types.js";
@@ -28,20 +29,39 @@ export async function previewAbstraction(
     report: (progress: AbstractionProgress) => void = () => {},
 ): Promise<AbstractionPreview> {
     const definition = validateAbstractionRules(requestedDefinition);
-    const policyFingerprint = await hash(canonical(definition));
     report({ stage: "Indexing selected evidence", completed: 0, total: sources.length });
-    const index = buildEvidenceIndex(sources, selectedRuns);
+    return previewIndexedEvidence(
+        buildEvidenceIndex(sources, selectedRuns),
+        new ProjectionCache(definition),
+        report,
+    );
+}
+
+export async function previewIndexedEvidence(
+    index: EvidenceIndex,
+    cache: ProjectionCache,
+    report: (progress: AbstractionProgress) => void = () => {},
+): Promise<AbstractionPreview> {
+    const definition = cache.definition;
+    const policyFingerprint = await cache.policyFingerprint();
     const builders = new Map<string, GroupBuilder>();
     const unmatched: AbstractionPreview["unmatched"] = [];
     const budget = new ComparisonBudget();
     let completed = 0;
-    for (const indexed of index.observations.values()) {
-        let projection: ObservationProjection;
+    const observations = [...index.observations.values()].sort(
+        (left, right) =>
+            compare(
+                index.sources.get(left.source.id)!.fingerprint,
+                index.sources.get(right.source.id)!.fingerprint,
+            ) ||
+            compare(left.observation.test_sequence, right.observation.test_sequence) ||
+            compareIndex(left.observation.observation_index, right.observation.observation_index) ||
+            compare(left.observation.id, right.observation.id),
+    );
+    for (const indexed of observations) {
+        let projected: ReturnType<ProjectionCache["observation"]>;
         try {
-            projection = projectObservation(indexed, definition, (value) => budget.account(value));
-            if (!projection.informative) {
-                throw new Error("None of the selected fields has a captured value.");
-            }
+            projected = cache.observation(indexed, budget);
         } catch (error) {
             if (error instanceof AbstractionLimitError) {
                 throw error;
@@ -56,8 +76,7 @@ export async function previewAbstraction(
             report({ stage: "Comparing observations", completed, total: index.observations.size });
             continue;
         }
-        budget.account(projection.comparison);
-        const encoded = canonical(projection.comparison);
+        const { projection, comparisonKey: encoded } = projected;
         let builder = builders.get(encoded);
         if (!builder) {
             builder = { comparison: projection.comparison, members: [], widgetBuckets: new Map() };
@@ -76,7 +95,7 @@ export async function previewAbstraction(
         groups.push(
             ...(await Promise.all(
                 entries.slice(start, start + 128).map(async ([comparison, builder]) => {
-                    const id = await hash(canonical([policyFingerprint, comparison]));
+                    const id = await cache.groupId(comparison);
                     return {
                         id,
                         comparison: builder.comparison,
@@ -94,15 +113,25 @@ export async function previewAbstraction(
         policyFingerprint,
         interpreterVersion: INTERPRETER_VERSION,
         inputScope: {
-            sources: [...index.sources.values()].map((source) => ({
-                id: source.id,
-                label: source.label,
-                fingerprint: source.fingerprint,
-            })),
-            runs: [...index.runs.values()].map(({ source, run }) => ({
-                source: source.id,
-                run: run.id,
-            })),
+            sources: [...index.sources.values()]
+                .sort((a, b) => compare(a.fingerprint, b.fingerprint))
+                .map((source) => ({
+                    id: source.id,
+                    label: source.label,
+                    fingerprint: source.fingerprint,
+                })),
+            runs: [...index.runs.values()]
+                .sort(
+                    (a, b) =>
+                        compare(
+                            index.sources.get(a.source.id)!.fingerprint,
+                            index.sources.get(b.source.id)!.fingerprint,
+                        ) || compare(a.run.id, b.run.id),
+                )
+                .map(({ source, run }) => ({
+                    source: source.id,
+                    run: run.id,
+                })),
         },
         index: index.counts,
         groups,
@@ -159,8 +188,4 @@ function correspondences(group: string, builder: GroupBuilder): WidgetCorrespond
                 ambiguous,
             };
         });
-}
-
-async function hash(value: string): Promise<string> {
-    return digest(new TextEncoder().encode(value));
 }

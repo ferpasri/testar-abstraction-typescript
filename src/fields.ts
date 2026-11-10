@@ -1,3 +1,4 @@
+import { JsonNumber } from "testar-evidence";
 import { canonical } from "./common.js";
 import { removePathParameters } from "./url.js";
 import {
@@ -44,6 +45,7 @@ export function projectFields(
                 selected.reading.kind === "missing" ||
                 value === null ||
                 typeof value !== "object" ||
+                value instanceof JsonNumber ||
                 !Object.hasOwn(value, segment)
             ) {
                 selected.reading = { kind: "missing" };

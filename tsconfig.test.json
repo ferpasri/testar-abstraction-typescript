@@ -5,5 +5,11 @@
         "noEmit": true,
         "allowImportingTsExtensions": true
     },
-    "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.ts", "tools/**/*.ts"]
+    "include": [
+        "src/**/*.ts",
+        "tests/**/*.ts",
+        "vitest.config.ts",
+        "tools/**/*.ts",
+        "benchmarks/**/*.ts"
+    ]
 }

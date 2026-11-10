@@ -1,9 +1,10 @@
+import type { projectAction } from "./actionProjection.js";
 import type { AbstractAction } from "./abstractActionTypes.js";
 import { buildActionEvidence } from "./abstractActions.js";
 import { testRunForSequence } from "./evidence-input.js";
 import { canonical } from "./common.js";
-import type { RecordedExecution } from "./evidence-input.js";
-import { observationOrderLinks } from "./observation-order.js";
+import type { Observation, RecordedExecution } from "./evidence-input.js";
+import { orderLinks } from "./observation-order.js";
 import {
     buildEvidenceIndex,
     compare,
@@ -25,7 +26,14 @@ export function buildAbstractModel(
     preview: AbstractionPreview,
     sources: AnalysisSource[],
 ): AbstractModel {
-    const index = scopedIndex(preview, sources);
+    return buildModelFromIndex(preview, scopedIndex(preview, sources));
+}
+
+export function buildModelFromIndex(
+    preview: AbstractionPreview,
+    index: EvidenceIndex,
+    projector?: typeof projectAction,
+): AbstractModel {
     const nodes: AbstractModelNode[] = [];
     const nodeByObservation = new Map<string, string>();
     const nodeIds = new Set<string>();
@@ -67,7 +75,7 @@ export function buildAbstractModel(
         );
     }
     const actionEvidence = preview.definition.actions
-        ? buildActionEvidence(index, nodeByObservation, preview.definition.actions)
+        ? buildActionEvidence(index, nodeByObservation, preview.definition.actions, projector)
         : undefined;
     const actionByExecution = actionEvidence
         ? new Map(
@@ -258,11 +266,24 @@ function connectObservationOrder(
     nodeByObservation: Map<string, string>,
     edges: Map<string, AbstractModelEdge>,
 ): void {
+    const observationsBySource = new Map<string, Observation[]>();
+    const executionsBySource = new Map<string, RecordedExecution[]>();
+    for (const item of index.observations.values()) {
+        const observations = observationsBySource.get(item.source.id) ?? [];
+        observations.push(item.observation);
+        observationsBySource.set(item.source.id, observations);
+    }
+    for (const item of index.executions.values()) {
+        const executions = executionsBySource.get(item.source.id) ?? [];
+        executions.push(item.execution);
+        executionsBySource.set(item.source.id, executions);
+    }
     for (const source of index.sources.values()) {
-        const observations = [...index.observations.values()]
-            .filter((item) => item.source.id === source.id)
-            .map((item) => item.observation);
-        for (const orderLink of observationOrderLinks(source.evidence, observations)) {
+        for (const orderLink of orderLinks(
+            observationsBySource.get(source.id) ?? [],
+            executionsBySource.get(source.id) ?? [],
+            (sequence) => testRunForSequence(source.evidence, sequence),
+        )) {
             const origin = { source: source.id, run: orderLink.run, observation: orderLink.source };
             const result = { source: source.id, run: orderLink.run, observation: orderLink.target };
             const sourceNode = nodeByObservation.get(referenceKey(origin));

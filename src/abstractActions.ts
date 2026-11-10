@@ -16,6 +16,7 @@ export function buildActionEvidence(
     index: EvidenceIndex,
     nodeByObservation: Map<string, string>,
     rules: ActionRules,
+    projector: typeof projectAction = projectAction,
 ): AbstractActionEvidence {
     const result: AbstractActionEvidence = {
         actions: [],
@@ -76,7 +77,7 @@ export function buildActionEvidence(
             };
             let projection: ReturnType<typeof projectAction>;
             try {
-                projection = projectAction(
+                projection = projector(
                     index,
                     reference,
                     available.action_description,
@@ -131,7 +132,7 @@ export function buildActionEvidence(
         let projection: ReturnType<typeof projectAction> | undefined;
         let diagnostic: string | undefined;
         try {
-            projection = projectAction(
+            projection = projector(
                 index,
                 observation,
                 data.action_description,

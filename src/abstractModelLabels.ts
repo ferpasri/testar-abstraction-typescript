@@ -1,3 +1,4 @@
+import { JsonNumber } from "testar-evidence";
 import type { ObservationGroup } from "./types.js";
 
 export function groupLabel(group: ObservationGroup, index: number): string {
@@ -21,10 +22,13 @@ export function groupLabel(group: ObservationGroup, index: number): string {
 }
 
 export function edgeLabel(kind: string, count: number): string {
-    return clip(kind, 64) + (count > 1 ? " × " + count : "");
+    return clip(kind, 64) + (count > 1 ? " Ã— " + count : "");
 }
 
 function compactValue(value: unknown): string {
+    if (value instanceof JsonNumber) {
+        return clip(value.text, 80);
+    }
     if (Array.isArray(value)) {
         return "[" + value.length + " values]";
     }
@@ -35,5 +39,5 @@ function compactValue(value: unknown): string {
 }
 
 function clip(value: string, maximum: number): string {
-    return value.length > maximum ? value.slice(0, maximum - 1) + "…" : value;
+    return value.length > maximum ? value.slice(0, maximum - 1) + "â€¦" : value;
 }

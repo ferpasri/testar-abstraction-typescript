@@ -1,3 +1,5 @@
+import { IncrementalAbstraction } from "../src/index.js";
+import { JsonNumber } from "testar-evidence";
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import {
@@ -10,7 +12,7 @@ import {
     projectFields,
     type AbstractModel,
 } from "../src/index.js";
-import { canonical } from "../src/common.js";
+import { canonical, parseJson } from "../src/common.js";
 import {
     conformanceSources,
     ordered,
@@ -56,6 +58,9 @@ function semanticResult(model: AbstractModel) {
     };
 }
 function normalize(value: unknown): unknown {
+    if (value instanceof JsonNumber) {
+        return value;
+    }
     if (Array.isArray(value)) {
         return ordered(value.map(normalize));
     }
@@ -70,7 +75,7 @@ const { directory, cases } = sharedCases("actions");
 describe("shared action abstraction conformance", () => {
     for (const name of cases) {
         it(name, async () => {
-            const input = JSON.parse(
+            const input = parseJson(
                 await readFile(`${directory}/${name}/input.json`, "utf8"),
             ) as ConformanceInput;
             const before = canonical(input);
@@ -80,11 +85,31 @@ describe("shared action abstraction conformance", () => {
             );
             const selected = input.selected_runs.map((run) => runKey(run.source, run.run));
             const expected = normalize(
-                JSON.parse(await readFile(`${directory}/${name}/expected.json`, "utf8")),
+                parseJson(await readFile(`${directory}/${name}/expected.json`, "utf8")),
             );
             const preview = await previewAbstraction(evidence, rules, selected);
             const model = buildAbstractModel(preview, evidence);
-            expect(normalize(semanticResult(model))).toEqual(expected);
+            expect(canonical(normalize(semanticResult(model)))).toBe(canonical(expected));
+            const incremental = new IncrementalAbstraction(
+                rules,
+                input.selected_runs.map((run) => runKey(run.source, run.run)),
+            );
+            for (const source of evidence) {
+                incremental.update({
+                    source,
+                    previousFingerprint: null,
+                    changes: {
+                        runs: [...source.evidence.runs.values()],
+                        sequences: [...source.evidence.sequences.values()],
+                        observations: [...source.evidence.observations.values()],
+                        actions: [...source.evidence.actions.values()],
+                        executions: [...source.evidence.executions.values()],
+                    },
+                });
+            }
+            const updated = await incremental.construct();
+            expect(canonical(updated.preview)).toBe(canonical(preview));
+            expect(canonical(updated.model)).toBe(canonical(model));
             expect(canonical(input)).toBe(before);
             const reversed = [...evidence].reverse().map((source) => ({
                 ...source,
@@ -97,9 +122,9 @@ describe("shared action abstraction conformance", () => {
                 },
             }));
             const repeated = await previewAbstraction(reversed, rules, [...selected].reverse());
-            expect(normalize(semanticResult(buildAbstractModel(repeated, reversed)))).toEqual(
-                expected,
-            );
+            expect(
+                canonical(normalize(semanticResult(buildAbstractModel(repeated, reversed)))),
+            ).toBe(canonical(expected));
             for (const action of model.actionEvidence!.actions) {
                 expect(action.availability.length + action.executions.length).toBeGreaterThan(0);
             }
@@ -108,7 +133,7 @@ describe("shared action abstraction conformance", () => {
 });
 
 async function example(name = "available-and-executed") {
-    const input = JSON.parse(
+    const input = parseJson(
         await readFile(`${directory}/${name}/input.json`, "utf8"),
     ) as ConformanceInput;
     const evidence = conformanceSources(input);

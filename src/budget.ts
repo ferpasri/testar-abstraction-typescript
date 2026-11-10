@@ -1,3 +1,4 @@
+import { JsonNumber } from "testar-evidence";
 import { canonical } from "./common.js";
 import { ABSTRACTION_LIMITS } from "./types.js";
 
@@ -5,6 +6,14 @@ export class AbstractionLimitError extends Error {}
 
 export class ComparisonBudget {
     private bytes = 0;
+
+    get usedBytes(): number {
+        return this.bytes;
+    }
+
+    addBytes(bytes: number): void {
+        this.add(bytes);
+    }
 
     account(value: unknown): void {
         if (Array.isArray(value)) {
@@ -14,7 +23,7 @@ export class ComparisonBudget {
             }
             return;
         }
-        if (value !== null && typeof value === "object") {
+        if (value !== null && typeof value === "object" && !(value instanceof JsonNumber)) {
             const entries = Object.entries(value);
             this.add(2 + Math.max(0, entries.length - 1));
             for (const [key, item] of entries) {
